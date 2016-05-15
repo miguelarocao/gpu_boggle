@@ -13,6 +13,7 @@ class Node
 {
 	char letter;
 	bool end_word;
+	bool used; //indicates that word has already been printed
 	Node *parent;
 	vector<Node*> children;
 public:
@@ -23,6 +24,8 @@ public:
 	char getLetter() { return letter; }
 	void setEndWord(bool end) { end_word = end; }
 	bool isEndWord() { return end_word; }
+	bool isUsed() { return used; }
+	void setUsed(bool _used) { used = _used; }
 	int numChildren() { return children.size(); }
 	vector<Node*> *getChildren() { return &children; }
 };

@@ -23,6 +23,7 @@ class Board {
 public:
 	Board(int _width, int _height);
 	~Board();
+	void genRandLetters();
 	void setLetters(string letters);
 	int getAdj(Tile* center, Tile **adj);
 	Tile* getTile(int x, int y);

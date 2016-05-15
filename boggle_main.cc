@@ -29,10 +29,11 @@ int main(int argc, char** argv)
 	double time_initial, time_final;
 
 	//setup board
-	string letters = "abcdefghijklmnop";
-	cout << letters.length() << "\n";
-	Board board(4, 4);
-	board.setLetters(letters);
+	//string letters = "abcdefghijklmnop";
+	//cout << letters.length() << "\n";
+	Board board(30, 30);
+	board.genRandLetters();
+	//board.setLetters(letters);
 	board.printBoard();
 
 	//read dictionary
@@ -108,7 +109,7 @@ void prefixTraversal(Trie *prefix, Node *curr_node, Board *board, Tile *curr_til
 	bool success = false;
 	
 	//check if word found and long enough -> print
-	if ( (curr_node->isEndWord()) && (char_idx>=MIN_WORD_LEN) )
+	if ( (curr_node->isEndWord()) && (char_idx>=MIN_WORD_LEN) && (!curr_node->isUsed()) )
 	{
 #if VERBOSE
 		cout << *word_cnt << ": ";
@@ -117,6 +118,7 @@ void prefixTraversal(Trie *prefix, Node *curr_node, Board *board, Tile *curr_til
 		cout << "\n";
 #endif
 		(*word_cnt)++; //increase word count
+		curr_node->setUsed(true);
 	}
 
 	if (char_idx == 0)

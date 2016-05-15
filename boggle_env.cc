@@ -8,7 +8,10 @@ Miguel Aroca-Ouellette
 #include <stdlib.h>
 #include <string>
 #include <cassert>
+#include <time.h>
 #include "boggle_env.h"
+
+#define NUM_LETTERS 26
 
 /*Constructor: Set dimensions of board.*/
 Board::Board(int _width, int _height)
@@ -26,6 +29,26 @@ Board::~Board()
 	for (int i = 0; i < height; i++)
 		free(grid[i]);
 	free(grid);
+}
+
+/*Populates the board with random letters.*/
+void Board::genRandLetters()
+{
+	//random seed
+	srand(time(NULL));
+
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			//get random number between 0 and 25 -> letters
+			char rand_char = 'a' + rand() % NUM_LETTERS;
+			grid[y][x].letter = rand_char;
+			grid[y][x].x = x;
+			grid[y][x].y = y;
+			grid[y][x].used = false;
+		}
+	}
 }
 
 /*Set letters. Ensure that it is the right size.*/

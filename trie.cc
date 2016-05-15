@@ -15,6 +15,7 @@ Node::Node(char _letter, bool _end_word, Node* _parent)
 {
 	letter = _letter;
 	end_word = _end_word;
+	used = false;
 	parent = _parent;
 }
 

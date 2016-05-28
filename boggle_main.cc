@@ -6,10 +6,9 @@ Miguel Aroca-Ouellette
 */
 
 #define DICT_SIZE 109583 //words_clean.txt
-#define MAX_WORD_LEN 31
 #define NUM_ADJ 8 //tiles can have at most 8 adjacent tiles
 #define MIN_WORD_LEN 3 //minimum acceptable word length boggle
-#define VERBOSE 0
+#define VERBOSE 1
 
 #include <iostream>
 #include <fstream>
@@ -29,21 +28,25 @@ int main(int argc, char** argv)
 	double time_initial, time_final;
 
 	//setup board
-	//string letters = "abcdefghijklmnop";
+	string letters = "abcdefghijklmnop";
 	//cout << letters.length() << "\n";
-	Board board(30, 30);
-	board.genRandLetters();
-	//board.setLetters(letters);
+	Board board(4, 4);
+	//board.genRandLetters();
+	board.setLetters(letters);
 	board.printBoard();
 
 	//read dictionary
-	string dictionary[DICT_SIZE];
-	readFile(dictionary, DICT_SIZE, dict_file);
+	char **dictionary = (char **)malloc(sizeof(char*)*DICT_SIZE);
+	for (int i = 0; i < DICT_SIZE; i++)
+		dictionary[i] = (char *)malloc(sizeof(char)*MAX_WORD_LEN);
+	readFile(dictionary, dict_file);
+	
 
 	//build prefix tree
 	Trie prefix;
 	prefix.buildFromDict(dictionary, DICT_SIZE);
 
+	
 	//solve in single mode
 	time_initial = preciseClock();
 	singleSolve(dictionary, DICT_SIZE, &board);
@@ -58,6 +61,17 @@ int main(int argc, char** argv)
 
 	return 1;
 }
+
+/*--- GPU Solving Handlers ---*/
+/*
+void single_gpu(string dictionary[], Board *board)
+{
+	//allocate memory on GPU
+	Board *dev_board;
+	string *dev_dic[];
+	cudaMalloc((void **)&dev_board, sizeof(Board));
+	cudaMalloc((void **)&dev_dict, sizeof(string)*DICT_SIZE);
+}*/
 
 /*--- Timing Functions --- */
 
@@ -154,20 +168,21 @@ void prefixTraversal(Trie *prefix, Node *curr_node, Board *board, Tile *curr_til
 		}	
 	}
 
-	//if adacency is empty -> done
+	//if adjacency is empty -> done
 }
 
 /*--- SINGLE WORD SOLVE ---*/
 
 /* Finds all words in Boggle grid one word at a time.*/
-int singleSolve(string dictionary[], int dict_size, Board *board)
+int singleSolve(char **dictionary, int dict_size, Board *board)
 {
 	int count = 0;
 	for (int i = 0; i < dict_size; i++)
 	{
-		if (dictionary[i].length() < MIN_WORD_LEN){ continue; }//skip words too short
+		int length = wordLength(dictionary[i]);
+		if (length < MIN_WORD_LEN){ continue; }//skip words too short
 
-		if (recursiveFind(dictionary[i], 0, board, NULL))
+		if (recursiveFind(dictionary[i], length, 0, board, NULL))
 		{
 			count++;
 #if VERBOSE
@@ -185,14 +200,14 @@ int singleSolve(string dictionary[], int dict_size, Board *board)
 INPUTS: Word to search for.
 		Character index of word. Increments by 1 at every recursion level.
 		Boggle board.*/
-bool recursiveFind(string word, int char_idx, Board *board, Tile* curr_tile)
+bool recursiveFind(char *word, int length, int char_idx, Board *board, Tile* curr_tile)
 {
 	Tile **check_tiles;
 	int num_check;
 	bool success = false;
 
 	//check if done
-	if (word.length() == (char_idx))
+	if (length == (char_idx))
 		return true;
 
 	if (char_idx == 0)
@@ -224,7 +239,7 @@ bool recursiveFind(string word, int char_idx, Board *board, Tile* curr_tile)
 		if (check_tiles[i]->letter == word[char_idx])
 		{
 			check_tiles[i]->used = true; //mark as used
-			if (recursiveFind(word, char_idx+1, board, check_tiles[i]))
+			if (recursiveFind(word, length, char_idx+1, board, check_tiles[i]))
 			{
 				success = true;
 				break;
@@ -239,8 +254,19 @@ bool recursiveFind(string word, int char_idx, Board *board, Tile* curr_tile)
 	return success;
 }
 
+/* Returns length of word. Must be terminated by null character! */
+int wordLength(char *word)
+{
+	int length = 0;
+	while (true)
+	{
+		if (word[length++] == '\0')
+			return length - 1;
+	}
+}
+
 /*Reads frome file into string array.*/
-void readFile(string dictionary[], int size, string filename)
+void readFile(char **dictionary, string filename)
 {
 	int count = 0;
 	string line;
@@ -250,7 +276,7 @@ void readFile(string dictionary[], int size, string filename)
 	{
 		while (getline(myfile, line))
 		{
-			dictionary[count++] = line;
+			strcpy(dictionary[count++], line.c_str());
 		}
 	}
 	else cout << "Unable to open file.";

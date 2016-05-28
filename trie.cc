@@ -43,10 +43,10 @@ Trie::Trie()
 	root = new Node(0, false, NULL);
 }
 
-void Trie :: addWord(string word)
+void Trie :: addWord(char *word)
 {
 	Node *curr_node = root;
-	for (int i = 0; i < word.length();i++)
+	for (int i = 0; word[i] != '\0'; i++)
 	{
 		Node *next_node = curr_node->isChild(word[i]);
 		if (next_node == NULL)
@@ -61,10 +61,10 @@ void Trie :: addWord(string word)
 	curr_node->setEndWord(true);
 }
 
-bool Trie::searchWord(string word)
+bool Trie::searchWord(char *word)
 {
 	Node *curr_node = root;
-	for (int i = 0; i < word.length(); i++)
+	for (int i = 0; word[i] != '\0'; i++)
 	{
 		Node *next_node = curr_node->isChild(word[i]);
 		if (next_node == NULL)
@@ -99,7 +99,7 @@ void Trie::printTrie()
 	}
 }
 
-void Trie::buildFromDict(string dict[], int length)
+void Trie::buildFromDict(char **dict, int length)
 {
 	for (int i = 0; i < length; i++)
 		addWord(dict[i]);

@@ -35,12 +35,12 @@ class Trie
 	Node* root;
 public:
 	Trie();
-	void addWord(string word);
-	bool searchWord(string word);
+	void addWord(char *word);
+	bool searchWord(char *word);
 	void printTrie();
 	Node* getRoot() { return root; }
 	Node* getChild(Node* node, char letter) { return node->isChild(letter); } //returns NULL if doesn't exist
-	void buildFromDict(string dict[], int length);
+	void buildFromDict(char **dict, int length);
 };
 
 #endif

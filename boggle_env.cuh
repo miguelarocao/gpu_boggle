@@ -47,6 +47,8 @@ public:
 	CUDA_CALLABLE_MEMBER void resetBoard();
 	CUDA_CALLABLE_MEMBER void printBoard();
 	CUDA_CALLABLE_MEMBER void printUsed();
+	CUDA_CALLABLE_MEMBER int getLetterCount(char c);
+	CUDA_CALLABLE_MEMBER void getTilesByLetter(Tile *all_tiles[], char c);
 	Tile *grid;					  //necessary for cuda memory allocation
 };
 

@@ -247,3 +247,30 @@ bool checkTileList(Tile *check, Tile **list, int size)
 	}
 	return false;
 }
+
+/* Returns the number of tiles with this letter. */
+int Board::getLetterCount(char c)
+{
+	int count = 0;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			if (grid[x + y*width].letter == c)
+				count++;
+		}
+	}
+	return count;
+}
+
+/*Returns all tiles in the board that match a given letter. 
+  Should call getLetterCount before hand to get size.*/
+void Board::getTilesByLetter(Tile *all_tiles[], char c)
+{
+	int i = 0;
+	for (int x = 0; x < height*width; x++)
+	{
+		if (grid[x].letter == c)
+			all_tiles[i++] = &grid[x];
+	}
+}

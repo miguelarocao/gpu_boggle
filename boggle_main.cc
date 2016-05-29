@@ -9,8 +9,8 @@ Miguel Aroca-Ouellette
 #define MAX_WORD_LEN 32 //includes null terminating character
 #define MIN_WORD_LEN 3 //minimum acceptable word length boggle
 #define MAX_BLOCKS 1024
-#define THREADS_PER_BLOCK 5
-#define VERBOSE 1
+#define THREADS_PER_BLOCK 100
+#define VERBOSE 0
 
 #include <iostream>
 #include <fstream>
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 	//setup board
 	string letters = "zyxzrfuddwntbjjdqjyrtaovkqiijmayjbufwtairdqytwapr";
 	//cout << letters.length() << "\n";
-	Board board(12,12);
+	Board board(10,10);
 	board.genRandLetters();
 	//board.setLetters(letters);
 
@@ -85,17 +85,7 @@ int main(int argc, char** argv)
 	time_final = preciseClock();
 	cout << "Prefix solve: " << (time_final - time_initial) << " ms.\n";
 
-	/*Tile **check_tiles = (Tile **)malloc(sizeof(Tile *)*board.getNumTiles());
-	board.getAllTiles(check_tiles);
-	Tile *center = check_tiles[10];
-	printf("Checking adjacency of %c\n", center->letter);
-	Tile **adj_tiles = (Tile **)malloc(sizeof(Tile *)*8);
-	board.getAdjList(center, adj_tiles);
-	for (int i = 0; i < NUM_ADJ; i++)
-	{
-		if (adj_tiles[i] != NULL)
-			printf("%c\n", adj_tiles[i]->letter);
-	}*/
+	
 
 	single_gpu(dictionary, DICT_SIZE, MAX_WORD_LEN, &board);
 
@@ -129,19 +119,29 @@ void single_gpu(char **dict, int size, int max_word_len, Board *board)
 	Board *dev_board;
 	cudaMalloc((void **)&dev_board, sizeof(Board));
 	cudaMemcpy(dev_board, board, sizeof(Board), cudaMemcpyHostToDevice);
-	//make space for grid
+
+	//make space for grid and copy over
 	Tile *dev_grid;
 	int grid_size = board->getNumTiles();
 	cudaMalloc((void **)&dev_grid, sizeof(Tile)*grid_size);
 	cudaMemcpy(dev_grid, board->grid, sizeof(Tile)*grid_size, cudaMemcpyHostToDevice);
-
-	cudaMemcpy(&(dev_board->grid), &dev_grid, sizeof(Tile *), cudaMemcpyHostToDevice);
+	cudaMemcpy(&(dev_board->grid), &dev_grid, sizeof(Tile *), cudaMemcpyHostToDevice); //assign to object
 	
+	//memory for word counter
 	int word_count;
 	int *dev_word_count;
 	cudaMalloc((void **)&dev_word_count,sizeof(int));
 	cudaMemset(dev_word_count, 0, sizeof(int));
+
+	//run and time
+	double time_initial, time_final;
+	time_initial = preciseClock();
 	cudaCallSingleSolveKernel(blocks, threadsPerBlock, dev_dict, size, max_word_len, dev_board, dev_word_count);
+	time_final = preciseClock();
+	cout << "GPU solve: " << (time_final - time_initial) << " ms.\n";
+
+
+	//copy back and print results
 	cudaMemcpy(&word_count, dev_word_count, sizeof(int), cudaMemcpyDeviceToHost);
 	printf("Word count: %d\n", word_count);
 

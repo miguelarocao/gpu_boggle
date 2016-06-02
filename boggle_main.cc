@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 	string dict_file = "wordsEn.txt";
 	int board_height = 5;
 	int board_width = 5;
-	int num_trials = 1;
+	int num_trials = 2;
 
 	//initialize timer
 	initTiming();
@@ -73,7 +73,23 @@ int main(int argc, char** argv)
 	Trie prefix;
 	prefix.buildFromDict(dictionary, DICT_SIZE);
 
-	//initialize GPU memory
+	// ---------- initialize GPU memory
+	Board *dev_board;
+	char *dev_dict;
+	Tile *dev_grid;
+	int *dev_word_count;
+	//dictionary setup: flatten
+	gpuErrChk(cudaMalloc((void **)&dev_dict, sizeof(char)*MAX_WORD_LEN*DICT_SIZE));
+	for (int i = 0; i < DICT_SIZE; i++)
+		gpuErrChk(cudaMemcpy(&dev_dict[i*MAX_WORD_LEN], dictionary[i], sizeof(char)*MAX_WORD_LEN, cudaMemcpyHostToDevice));
+
+	//board setup
+	cudaMalloc((void **)&dev_board, sizeof(Board));
+	cudaMalloc((void **)&dev_grid, sizeof(Tile)*(board_width*board_height));
+
+	//word count
+	cudaMalloc((void **)&dev_word_count, sizeof(int));
+	// ---------- done initializing  GPU memory
 
 	//Timing loop
 	cout << "Single CPU \t Prefix CPU \t GPU (ms) \n";
@@ -109,7 +125,7 @@ int main(int argc, char** argv)
 #if VERBOSE
 		cout << "\nGPU solver...\n";
 #endif
-		time = single_gpu(dictionary, DICT_SIZE, MAX_WORD_LEN, &board);
+		time = single_gpu(dev_dict, &board, dev_board, dev_grid, dev_word_count);
 		cout << time << "\t\n";
 	}
 
@@ -121,44 +137,33 @@ int main(int argc, char** argv)
 	return 1;
 }
 
-/*--- GPU Solving Handlers. Returns computation time.---*/
+/*--- GPU Solver ---*/
 
-float single_gpu(char **dict, int size, int max_word_len, Board *board)
+
+// Solve and Returns computation time.
+float single_gpu(char *dev_dict, Board *board, Board *dev_board, Tile *dev_grid, int *dev_word_count)
 {
 	//set blocks & threads per block
 	const unsigned int threadsPerBlock = THREADS_PER_BLOCK;
 	const unsigned int blocks = min(MAX_BLOCKS, (unsigned int)ceil(
 		DICT_SIZE / float(threadsPerBlock)));
-
-	//allocate memory on GPU and copy over data for dictionary
-	//flatten 2D dictionary array to 1D
-	char *dev_dict;
-	gpuErrChk(cudaMalloc((void **)&dev_dict, sizeof(char)*max_word_len*size));
-	for (int i = 0; i < size; i++)
-		gpuErrChk(cudaMemcpy(&dev_dict[i*MAX_WORD_LEN], dict[i], sizeof(char)*max_word_len, cudaMemcpyHostToDevice));
-
-	//allocate memory on GPU and copy over data for boards
-	Board *dev_board;
-	cudaMalloc((void **)&dev_board, sizeof(Board));
+	
+	//copy over board
 	cudaMemcpy(dev_board, board, sizeof(Board), cudaMemcpyHostToDevice);
 
-	//make space for grid and copy over
-	Tile *dev_grid;
+	//copy over grid
 	int grid_size = board->getNumTiles();
-	cudaMalloc((void **)&dev_grid, sizeof(Tile)*grid_size);
 	cudaMemcpy(dev_grid, board->grid, sizeof(Tile)*grid_size, cudaMemcpyHostToDevice);
 	cudaMemcpy(&(dev_board->grid), &dev_grid, sizeof(Tile *), cudaMemcpyHostToDevice); //assign to object
 
-	//memory for word counter
+	//memset word count
 	int word_count;
-	int *dev_word_count;
-	cudaMalloc((void **)&dev_word_count, sizeof(int));
 	cudaMemset(dev_word_count, 0, sizeof(int));
 
 	//run and time
 	double time_initial, time_final;
 	time_initial = preciseClock();
-	cudaCallSingleSolveKernel(blocks, threadsPerBlock, dev_dict, size, max_word_len, dev_board, dev_word_count);
+	cudaCallSingleSolveKernel(blocks, threadsPerBlock, dev_dict, DICT_SIZE, MAX_WORD_LEN, dev_board, dev_word_count);
 	time_final = preciseClock();
 
 	//copy back and print results

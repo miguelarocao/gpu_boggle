@@ -9,12 +9,13 @@ Miguel Aroca-Ouellette
 #define MAX_WORD_LEN 32 //includes null terminating character
 #define MIN_WORD_LEN 3 //minimum acceptable word length boggle
 #define MAX_BLOCKS 1024
-#define THREADS_PER_BLOCK 10
+#define THREADS_PER_BLOCK 5
 #define VERBOSE 0
 
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
+#include <stdio.h>
 #include <cassert>
 #include <time.h>
 #include <windows.h> // For Timing via "QueryPerformanceCounter"
@@ -48,15 +49,26 @@ inline void gpuAssert(
 
 int main(int argc, char** argv)
 {
+
+	//input is board width and board height
+	if (argc < 3){
+		printf("Usage: (Board width) (Board height)\n");
+		exit(-1);
+	}
+	int board_width = atoi(argv[1]);
+	int board_height = atoi(argv[2]);
+
 	//parameters
 	string dict_file = "wordsEn.txt";
-	int board_height = 5;
-	int board_width = 5;
 	int num_trials = 2;
 
 	//initialize timer
 	initTiming();
-	double time;
+	double time_elapsed;
+	
+	//set random seed
+	srand(time(NULL));
+
 	//setup board
 	//string letters = "zyxzrfuddwntbjjdqjyrtaovkqiijmayjbufwtairdqytwapr";
 	//cout << letters.length() << "\n";
@@ -107,8 +119,8 @@ int main(int argc, char** argv)
 #if VERBOSE
 		cout << "\nSingle mode solver...\n";
 #endif
-		time = singleSolve(dictionary, DICT_SIZE, &board);
-		cout << time <<"\t";
+		time_elapsed = singleSolve(dictionary, DICT_SIZE, &board);
+		cout << time_elapsed << "\t\t";
 
 		board.resetBoard();
 
@@ -116,8 +128,8 @@ int main(int argc, char** argv)
 #if VERBOSE
 		cout << "\nPrefix mode solver...\n";
 #endif
-		time = prefixSolve(&prefix, &board);
-		cout << time << "\t";
+		time_elapsed = prefixSolve(&prefix, &board);
+		cout << time_elapsed << "\t";
 
 		board.resetBoard();
 
@@ -125,8 +137,8 @@ int main(int argc, char** argv)
 #if VERBOSE
 		cout << "\nGPU solver...\n";
 #endif
-		time = single_gpu(dev_dict, &board, dev_board, dev_grid, dev_word_count);
-		cout << time << "\t\n";
+		time_elapsed = single_gpu(dev_dict, &board, dev_board, dev_grid, dev_word_count);
+		cout << time_elapsed << "\t\n";
 	}
 
 	//free dictionary memory
@@ -173,8 +185,13 @@ float single_gpu(char *dev_dict, Board *board, Board *dev_board, Tile *dev_grid,
 	cout << "Found " << word_count << " words.\n";
 #endif
 
+	if (word_count == 0)
+	{
+		printf("GPU Solver failed! Try reducing board size or threads/block.\n");
+	}
+
 	//Free memory
-	cudaFree(dev_dict);
+	//cudaFree(dev_dict);
 
 	return (time_final - time_initial);
 }

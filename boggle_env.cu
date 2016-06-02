@@ -59,7 +59,6 @@ Board::Board(const Board &obj)
 void Board::genRandLetters()
 {
 	//random seed
-	srand(time(NULL));
 
 	for (int y = 0; y < height; y++)
 	{

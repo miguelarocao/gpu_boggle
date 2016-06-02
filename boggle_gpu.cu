@@ -6,6 +6,7 @@ Miguel Aroca-Ouellette
 
 #define MIN_WORD_LEN 3
 #define MAX_WORD_LEN 32
+#define VERBOSE 0
 
 #include <cstdio>
 #include <cuda_runtime.h>
@@ -95,7 +96,9 @@ void cudaSingleSolveKernel(char *dictionary, int dict_size, int max_word_len, Bo
 			{
 				if (char_idx >= MIN_WORD_LEN)
 				{
-					//printf("Found %s\n", word);
+#if VERBOSE
+					printf("%s\n",word);
+#endif
 					atomicAdd(word_count, 1);
 				}
 				break;

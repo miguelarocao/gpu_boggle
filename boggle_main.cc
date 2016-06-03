@@ -1,6 +1,5 @@
 /*
 Boggle Solver
-Version 1 - CPU Solver
 Miguel Aroca-Ouellette
 05/14/2016
 */
@@ -8,7 +7,7 @@ Miguel Aroca-Ouellette
 #define DICT_SIZE 109583 //words_clean.txt
 #define MAX_WORD_LEN 32 //includes null terminating character
 #define MIN_WORD_LEN 3 //minimum acceptable word length boggle
-#define MAX_BLOCKS 1024
+#define MAX_BLOCKS 512
 #define THREADS_PER_BLOCK 5
 #define VERBOSE 0
 
@@ -60,7 +59,7 @@ int main(int argc, char** argv)
 
 	//parameters
 	string dict_file = "wordsEn.txt";
-	int num_trials = 2;
+	int num_trials = 10;
 
 	//initialize timer
 	initTiming();
@@ -69,22 +68,16 @@ int main(int argc, char** argv)
 	//set random seed
 	srand(time(NULL));
 
-	//setup board
-	//string letters = "zyxzrfuddwntbjjdqjyrtaovkqiijmayjbufwtairdqytwapr";
-	//cout << letters.length() << "\n";
-	//board.setLetters(letters);
-
 	//read dictionary
 	char **dictionary = (char **)malloc(sizeof(char*)*DICT_SIZE);
 	for (int i = 0; i < DICT_SIZE; i++)
 		dictionary[i] = (char *)malloc(sizeof(char)*MAX_WORD_LEN);
 	readFile(dictionary, dict_file);
 
-
 	//build prefix tree
 	Trie prefix;
 	prefix.buildFromDict(dictionary, DICT_SIZE);
-
+	
 	// ---------- initialize GPU memory
 	Board *dev_board;
 	char *dev_dict;
@@ -103,21 +96,26 @@ int main(int argc, char** argv)
 	cudaMalloc((void **)&dev_word_count, sizeof(int));
 	// ---------- done initializing  GPU memory
 
+
 	//Timing loop
-	cout << "Single CPU \t Prefix CPU \t GPU (ms) \n";
+	int exp_word_cnt = 0; //To check for failures on the GPU
+#if (!VERBOSE)
+	cout << "Naive CPU \t Prefix CPU \t GPU (ms) \n";
+#endif
 	for (int i = 0; i < num_trials; i++)
 	{
 		//generate random letters
 		Board board(board_height, board_width);
-		board.genRandLetters();
+		board.genRandLetters();					//can also manually set the letters using board.setLetters(string_of_letters)
 
 #if VERBOSE
+		cout << "Board:\n";
 		board.printBoard();
 #endif
 
 		//solve in single mode
 #if VERBOSE
-		cout << "\nSingle mode solver...\n";
+		cout << "\Naive mode solver...\n";
 #endif
 		time_elapsed = singleSolve(dictionary, DICT_SIZE, &board);
 		cout << time_elapsed << "\t\t";
@@ -128,7 +126,7 @@ int main(int argc, char** argv)
 #if VERBOSE
 		cout << "\nPrefix mode solver...\n";
 #endif
-		time_elapsed = prefixSolve(&prefix, &board);
+		time_elapsed = prefixSolve(&prefix, &board, &exp_word_cnt);
 		cout << time_elapsed << "\t";
 
 		board.resetBoard();
@@ -137,9 +135,15 @@ int main(int argc, char** argv)
 #if VERBOSE
 		cout << "\nGPU solver...\n";
 #endif
-		time_elapsed = single_gpu(dev_dict, &board, dev_board, dev_grid, dev_word_count);
+		time_elapsed = single_gpu(dev_dict, &board, dev_board, dev_grid, dev_word_count, exp_word_cnt);
 		cout << time_elapsed << "\t\n";
 	}
+
+	//free cuda memory
+	cudaFree(dev_board);
+	cudaFree(dev_dict);
+	cudaFree(dev_grid);
+	cudaFree(dev_word_count);
 
 	//free dictionary memory
 	for (int i = 0; i < DICT_SIZE; i++)
@@ -153,7 +157,7 @@ int main(int argc, char** argv)
 
 
 // Solve and Returns computation time.
-float single_gpu(char *dev_dict, Board *board, Board *dev_board, Tile *dev_grid, int *dev_word_count)
+float single_gpu(char *dev_dict, Board *board, Board *dev_board, Tile *dev_grid, int *dev_word_count, int exp_word_cnt)
 {
 	//set blocks & threads per block
 	const unsigned int threadsPerBlock = THREADS_PER_BLOCK;
@@ -185,7 +189,8 @@ float single_gpu(char *dev_dict, Board *board, Board *dev_board, Tile *dev_grid,
 	cout << "Found " << word_count << " words.\n";
 #endif
 
-	if (word_count == 0)
+	//ensures that GPU solver actually ran properly
+	if (word_count < exp_word_cnt)
 	{
 		printf("GPU Solver failed! Try reducing board size or threads/block.\n");
 	}
@@ -226,20 +231,21 @@ double preciseClock()
 /*--- PREFIX SOLVE --- */
 
 /* Finds all words in Boggle grid by using prefix trees to traverse grid. Returns computation time. */
-float prefixSolve(Trie *prefix, Board *board)
+float prefixSolve(Trie *prefix, Board *board, int *word_cnt)
 {
 
 	double time_initial, time_final;
 	time_initial = preciseClock();
 	int char_idx = 0;
-	int word_cnt = 0;
+	*word_cnt = 0;
 	char word[MAX_WORD_LEN];
 	Node* root = prefix->getRoot();
-	prefixTraversal(prefix, root, board, NULL, &word_cnt, word, char_idx);
+	prefixTraversal(prefix, root, board, NULL, word_cnt, word, char_idx);
 	time_final = preciseClock();
 #if VERBOSE
-	cout << "Found " << word_cnt << " words.\n";
+	cout << "Found " << *word_cnt << " words.\n";
 #endif
+
 	return (time_final - time_initial);
 }
 

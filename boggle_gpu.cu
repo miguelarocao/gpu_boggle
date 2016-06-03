@@ -28,12 +28,16 @@ void cudaSingleSolveKernel(char *dictionary, int dict_size, int max_word_len, Bo
 	Tile **path_tiles = (Tile **)malloc(sizeof(Tile *)*max_word_len);
 	Tile **start_tiles = (Tile **)malloc(sizeof(Tile *)*num_tiles);
 	Tile *adj_tiles[NUM_ADJ];
-	memset(path_tiles, 0, sizeof(Tile *)*max_word_len);
 	Tile *curr_tile;
 	int start_count;
 
 	while (idx < dict_size)
 	{
+		//reset
+		memset(path_tiles, 0, sizeof(Tile *)*max_word_len);
+		memset(start_tiles, 0, sizeof(Tile *)*num_tiles);
+		memset(adj_tiles, 0, sizeof(Tile *)*NUM_ADJ);
+
 		char* word = &dictionary[idx*max_word_len];
 
 		//get start tiles

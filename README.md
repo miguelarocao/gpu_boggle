@@ -2,7 +2,7 @@
 
 An efficient GPU based Boggle solver. 
 
-Boggle is a word game whose purpose it is to find all possible words which can be formed by travelling a given grid of letters. By using GPUs, I hope can leverage the parallelizable nature of the problem in order to provide substantial speed ups over an equivalent CPU algorithms.
+Boggle is a word game whose purpose it is to find all possible words which can be formed by travelling a given grid of letters. By using GPUs, I leveraged the parallelizable nature of the problem in order to provide substantial speed ups over equivalent CPU algorithms.
 
 ## Installation/Usage Instructions
 
